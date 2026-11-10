@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Tarefa
 from app.schemas import TarefaDados, TarefaResposta
+from app.seguranca import usuario_autenticado
 
 router = APIRouter(prefix="/tarefas", tags=["Tarefas"])
 SessionDep = Annotated[Session, Depends(get_db)]
@@ -19,7 +20,12 @@ def buscar_tarefa(tarefa_id: int, db: Session) -> Tarefa:
     return tarefa
 
 
-@router.post("", response_model=TarefaResposta, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=TarefaResposta,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(usuario_autenticado)],
+)
 def criar_tarefa(dados: TarefaDados, db: SessionDep):
     tarefa = Tarefa(**dados.model_dump())
     db.add(tarefa)
@@ -46,7 +52,9 @@ def obter_tarefa(tarefa_id: int, db: SessionDep):
     return buscar_tarefa(tarefa_id, db)
 
 
-@router.put("/{tarefa_id}", response_model=TarefaResposta)
+@router.put(
+    "/{tarefa_id}", response_model=TarefaResposta, dependencies=[Depends(usuario_autenticado)]
+)
 def atualizar_tarefa(tarefa_id: int, dados: TarefaDados, db: SessionDep):
     tarefa = buscar_tarefa(tarefa_id, db)
     for campo, valor in dados.model_dump().items():
@@ -56,7 +64,11 @@ def atualizar_tarefa(tarefa_id: int, dados: TarefaDados, db: SessionDep):
     return tarefa
 
 
-@router.delete("/{tarefa_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{tarefa_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(usuario_autenticado)],
+)
 def excluir_tarefa(tarefa_id: int, db: SessionDep):
     tarefa = buscar_tarefa(tarefa_id, db)
     db.delete(tarefa)

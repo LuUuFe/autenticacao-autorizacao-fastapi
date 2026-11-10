@@ -3,8 +3,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 import jwt
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.hash import pbkdf2_sha256
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -21,6 +21,7 @@ ALGORITMO = "HS256"
 HASH_FALSO = pbkdf2_sha256.using(rounds=600_000).hash("senha-de-exemplo")
 
 router = APIRouter(tags=["Autenticação"])
+oauth2 = OAuth2PasswordBearer(tokenUrl="login")
 
 
 def credenciais_invalidas():
@@ -39,6 +40,7 @@ def buscar_usuario(db: Session, email: str):
 def login(
     formulario: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Annotated[Session, Depends(get_db)],
+    resposta: Response,
 ):
     if len(formulario.password) > 1024:
         raise credenciais_invalidas()
@@ -52,4 +54,23 @@ def login(
     token = jwt.encode(
         {"sub": usuario.email, "exp": expira_em}, CHAVE_JWT, algorithm=ALGORITMO
     )
+    resposta.headers["Cache-Control"] = "no-store"
+    resposta.headers["Pragma"] = "no-cache"
     return {"access_token": token, "token_type": "bearer"}
+
+
+def usuario_autenticado(
+    token: Annotated[str, Depends(oauth2)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    try:
+        dados = jwt.decode(
+            token, CHAVE_JWT, algorithms=[ALGORITMO], options={"require": ["sub", "exp"]}
+        )
+    except jwt.InvalidTokenError:
+        raise credenciais_invalidas() from None
+
+    usuario = buscar_usuario(db, dados["sub"])
+    if usuario is None:
+        raise credenciais_invalidas()
+    return usuario
