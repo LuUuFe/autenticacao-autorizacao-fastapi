@@ -8,18 +8,23 @@ API de tarefas com FastAPI, SQLite, migrações Alembic e autenticação OAuth2 
 
 Requer Python 3.12 ou superior. Depois de clonar o repositório, entre na pasta do projeto.
 
-No Windows (PowerShell):
+### Windows com Git Bash
 
-```powershell
+Abra o Git Bash na pasta do projeto e execute os comandos abaixo.
+
+```bash
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m alembic upgrade head
-.\.venv\Scripts\python.exe -m app.criar_usuario
-$env:JWT_SECRET = (.\.venv\Scripts\python.exe -c "import secrets; print(secrets.token_hex(32))")
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+source .venv/Scripts/activate
+python -m pip install -r requirements.txt
+python -m alembic upgrade head
+winpty python -m app.criar_usuario
+export JWT_SECRET="$(python -c 'import secrets; print(secrets.token_hex(32))')"
+python -m uvicorn app.main:app --reload
 ```
 
-No Linux ou macOS:
+Se o terminal informar que a entrada não é um TTY, rode `python -m app.criar_usuario` sem `winpty`.
+
+### Linux ou macOS
 
 ```bash
 python3 -m venv .venv
